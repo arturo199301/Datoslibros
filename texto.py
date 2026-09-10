@@ -1,27 +1,24 @@
-import requests
+mport requests
 from bs4 import BeautifulSoup
 import pandas as pd
 
-url = "http://books.toscrape.com/"
-response = requests.get(url)
-response.encoding = 'utf-8'
+url = "https://udiscover.mx/collections/cd"
+headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-soup = BeautifulSoup(response.text, "html.parser")
-libros = soup.find_all("article", class_="product_pod")
-
+# Método directo para e-commerce Shopify
+res_json = requests.get("https://udiscover.mx/collections/cd/products.json", headers=headers)
 datos = []
-for libro in libros:
-    titulo = libro.h3.a["title"]
-    precio_texto = libro.find("p", class_="price_color").text
-    precio = float(precio_texto.replace("£", "").replace("Â", ""))
-    disponibilidad = libro.find("p", class_="instock availability").text.strip()
 
-    datos.append({
-        "titulo": titulo,
-        "precio_gbp": precio,
-        "disponibilidad": disponibilidad
-    })
+if res_json.status_code == 200:
+    items = res_json.json().get("products", [])
+    for item in items:
+        precio = item.get("variants", [{}])[0].get("price", "N/A")
+        datos.append({
+            "producto": item.get("title"),
+            "artista": item.get("vendor"),
+            "precio_mxn": f"${precio}"
+        })
 
 df = pd.DataFrame(datos)
-df.to_csv("catalogo_libros.csv", index=False)
-print("Scraping exitoso y archivo catalogo_libros.csv creado.")
+df.to_csv("udiscover_cds_catalogo.csv", index=False)
+print(f"Catálogo exportado exitosamente con {len(df)} CDs a 'udiscover_cds_catalogo.csv'.")
